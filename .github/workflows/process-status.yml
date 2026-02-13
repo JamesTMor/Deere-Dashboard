@@ -1,0 +1,105 @@
+name: Process Status Changes
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  change_status:
+    if: |
+      contains(join(github.event.issue.labels.*.name, ','), 'status-change')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Handle status change via github-script
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const number = issue.number;
+            const body = issue.body || "";
+
+            function getField(label) {
+              const re = new RegExp(label + '\\s*:\\s*([^\\n\\r]+)', 'i');
+              const m = body.match(re);
+              return m ? m[1].trim() : "";
+            }
+
+            const projectId = getField("Project ID");
+            let newStatus = getField("New Status");
+            if (!projectId || !newStatus) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: number,
+                body: "❌ Please include both **Project ID** and **New Status** (Open | In Progress | Done)."
+              });
+              return;
+            }
+
+            // Normalize status
+            const allowed = ["Open", "In Progress", "Done"];
+            const map = {
+              "open": "Open",
+              "in progress": "In Progress",
+              "inprogress": "In Progress",
+              "done": "Done"
+            };
+            newStatus = map[newStatus.toLowerCase()] || newStatus;
+            if (!allowed.includes(newStatus)) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: number,
+                body: `❌ Invalid status: **${newStatus}**. Allowed: ${allowed.join(", ")}.`
+              });
+              return;
+            }
+
+            // Load projects.json
+            const path = "data/projects.json";
+            const fileRes = await github.rest.repos.getContent({
+              ...context.repo, path
+            });
+            const sha = fileRes.data.sha;
+            const content = Buffer.from(fileRes.data.content, 'base64').toString('utf8');
+            let projects = JSON.parse(content);
+            const idx = projects.findIndex(p => p.id === projectId);
+
+            if (idx === -1) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: number,
+                body: `❌ Project with ID **${projectId}** not found.`
+              });
+              return;
+            }
+
+            // Update status; merge signups -> team if becoming In Progress
+            const proj = projects[idx];
+            const prev = proj.status;
+            proj.status = newStatus;
+
+            if ((prev !== "In Progress") && newStatus === "In Progress") {
+              const team = Array.isArray(proj.team) ? proj.team : [];
+              const signups = Array.isArray(proj.signups) ? proj.signups : [];
+              const merged = Array.from(new Set([...team, ...signups]));
+              proj.team = merged;
+              proj.signups = [];
+            }
+
+            const newContent = Buffer.from(JSON.stringify(projects, null, 2)).toString('base64');
+            await github.rest.repos.createOrUpdateFileContents({
+              ...context.repo,
+              path,
+              message: `chore(status): ${projectId} -> ${newStatus} via #${number}`,
+              content: newContent,
+              sha
+            });
+
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: number,
+              body: `✅ Updated **${proj.title}** (ID: \`${projectId}\`) to **${newStatus}**.` +
+                    ((prev !== "In Progress" && newStatus === "In Progress") ? " Merged signups into team and cleared signups." : "")
+            });
+
+            await github.rest.issues.update({
+              ...context.repo, issue_number: number, state: "closed"
+            });
