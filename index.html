@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projects Dashboard</title>
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Projects Dashboard</h1>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search projects, tags, team…" />
+      <div class="filters">
+        <button class="filter-btn active" data-status="All">All</button>
+        <button class="filter-btn" data-status="Open">Open</button>
+        <button class="filter-btn" data-status="In Progress">In Progress</button>
+        <button class="filter-btn" data-status="Done">Done</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="cards" class="cards"></div>
+  </main>
+
+  <footer class="app-footer">
+    <span>Powered by GitHub Pages + Actions</span>
+    <button id="reload" title="Reload data">↻ Reload</button>
+  </footer>
+
+  <script src="./assets/config.js"></script>
+  <script src="./assets/dashboard.js"></script>
+</body>
+</html>
