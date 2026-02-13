@@ -32,6 +32,20 @@
     return `https://github.com/${owner}/${repo}/issues/new?${params.toString()}`;
   }
 
+  function buildStatusUrl(p) {
+    const owner = cfg.repoOwner;
+    const repo = cfg.repoName;
+    const title = `Status Change: ${p.title}`;
+    const body = `Project ID: ${p.id}\n\nNew Status: \n\nNotes (optional):`;
+    const params = new URLSearchParams({
+      template: "status-change.md",
+      title,
+      labels: "status-change",
+      body
+    });
+    return `https://github.com/${owner}/${repo}/issues/new?${params.toString()}`;
+  }
+
   function render() {
     const term = searchTerm.trim().toLowerCase();
     let list = projects.slice();
@@ -63,6 +77,9 @@
       const team = p.team || [];
       const signups = p.signups || [];
       const canSignUp = (p.status || "").toLowerCase() === "open";
+      const signUpLink = buildSignUpUrl(p);
+      const statusLink = buildStatusUrl(p);
+
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
@@ -78,10 +95,10 @@
         </div>
         <div class="counts">Team: ${team.length} &nbsp;•&nbsp; Sign-ups: ${signups.length}</div>
         <div class="actions">
-          <a class="btn primary" href="${buildSignUpUrl(p)}" ${canSignUp ? "" : "aria-disabled='true'"} ${canSignUp ? "" : "onclick='return false;'"}>
+          <a class="btn primary" href="${signUpLink}" target="_blank" rel="noopener">
             ${canSignUp ? "➕ Sign Up" : "🔒 Sign Up (Open only)"}
           </a>
-          <a class="btn secondary" href="https://github.com/${cfg.repoOwner}/${cfg.repoName}/issues/new?title=${encodeURIComponent("Status Change: "+p.title)}&labels=status-change&template=status-change.md&body=${encodeURIComponent("Project ID: "+p.id+"\n\nNew Status: \n\nNotes:")}" target="_blank">
+          <a class="btn secondary" href="${statusLink}" target="_blank" rel="noopener">
             🔁 Change Status
           </a>
         </div>
@@ -92,8 +109,15 @@
 
   async function load() {
     const res = await fetch(DATA_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Failed to load ${DATA_URL}`);
-    projects = await res.json();
+    if (!res.ok) throw new Error(`Failed to load ${DATA_URL} (HTTP ${res.status})`);
+    const text = await res.text();
+
+    // Debug helper: if it looks like HTML, give a clearer error
+    if (text.trim().startsWith("<")) {
+      throw new Error(`Expected JSON but received HTML. Check that ${DATA_URL} exists at the correct path.`);
+    }
+
+    projects = JSON.parse(text);
     render();
   }
 
@@ -122,5 +146,6 @@
     await load();
   } catch (e) {
     cardsEl.innerHTML = `<div class="card"><div class="desc">Error loading data: ${e.message}</div></div>`;
+    console.error(e);
   }
 })();
