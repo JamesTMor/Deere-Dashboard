@@ -1,0 +1,33 @@
+[
+  {
+    "id": "proj-001",
+    "title": "Super Trio Automation",
+    "description": "Automate onboarding/sign-up flows and status transitions.",
+    "status": "Open",
+    "owner": "james-morgan",
+    "team": ["james-morgan"],
+    "signups": ["alex-dev"],
+    "tags": ["automation", "flow"]
+  },
+  {
+    "id": "proj-002",
+    "title": "Scripting Toolkit",
+    "description": "Windows 11 install inventory + silent installer orchestration.",
+    "status": "In Progress",
+    "owner": "james-morgan",
+    "team": ["james-morgan", "maria-sys"],
+    "signups": [],
+    "tags": ["powershell", "endpoint"]
+  },
+  {
+    "id": "proj-003",
+    "title": "Dev Portal Enhancement",
+    "description": "Improve docs and search, add quickstarts.",
+    "status": "Done",
+    "owner": "alex-dev",
+    "team": ["alex-dev", "samir"],
+    "signups": [],
+    "tags": ["docs", "ui"]
+  }
+]
+``
